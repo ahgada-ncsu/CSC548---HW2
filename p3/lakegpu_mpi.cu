@@ -122,7 +122,7 @@ void run_gpu(double *u, double *u0, double *u1, double *pebbles, int n, double h
   int block1 = (n/nthreads) + (n%nthreads==0?0:1);
   int block2 = (n/n_dec) + (n%n_dec==0?0:1);
 
-  printf("BLCOKS : %d, %d", block1, block2);
+  // printf("BLCOKS : %d, %d", block1, block2);
 
   double *un, *uc, *uo, *d_pebbles, *uc_h, *uo_h;
 
