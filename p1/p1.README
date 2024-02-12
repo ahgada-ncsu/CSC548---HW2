@@ -1,0 +1,136 @@
+// ahgada Amay Haresh Gada 
+
+APPROACH
+
+- MPI_Init binds a server at each process to a port. It also performs a logical gather and broadcast on rank 0 so that all processes have socket information for communication with each other.
+
+- MPI_Send and Receive are written only as message passing interfaces accross sockets. 
+  I assume that there must be queues required to handle the case where a message belonging to a different process than the source process enters the MPI_Recv.
+  I, however, do not implement these queues due to time and complexity concerns.
+
+- MPI_Barrier. I do implement an MPI Barrier but since my MPISend and Receive do not have any queue to handle source mismatch, it affects my_rtt.c. 
+  I do a logical gather to aggregate all values at rank 0. Hence, doing another MPI_Barrier, confuses messages coming to rank 0 from the barrier.
+  This leads to trailing receives that wait indefinitely for a message. 
+  Hence, even hough I implement the Barrier, I do not use it in my code.
+
+
+PROBLEMS FACED
+
+- MPI_Barrier problem is explained above
+
+- For aggregation, I did a logical gather on rank 0 for all statistics. That was how I chose to implement p1.c in HW1. Now sine I have not created a queue based system, I assume that the order of messages doesn't matter. Any source can dump into MPI_Recv of another process, irrespective of the source. This assumption is okay, because at any given time, there are uniquely 2 nodes communicating without overlap.
+  When I perform the gather, however, this seems to cause problems. For all the cases where only Inter Node communication was required, I was able to engineer the correct output by adding sleep(1), however the same won't work for intranodes for some reason.
+  Hence, for the intranode results, this code works only till message size of 256KB.
+
+  NOTE: This wouldn't have been a problem if I would not have done a logical MPI_Gather in the end. 
+
+        The code works perfectly for all the other configurations where Intranode RTT is not needed.
+
+- Ps: the program takes some time to run completely. If testing for -N 2 -n 8, then reduce the upper limit of the loop to 8192*8 (line 51 in my_rtt.c);
+
+
+DISCUSSION
+- The RTT increases as message size increases as expected. The trends follow as discussed in p1.README of HW1.
+- However, my impleentation takes much much longer. This is because I create new connections every time I send a message. This can be prevented by persisting socket connections.
+
+
+COMPILATION
+- make -f p1.Makefile
+
+RUNNING THE code
+- salloc ....
+- ./my_prun ./my_rtt
+
+===============================================================================================================================
+
+salloc -N2 -n 4 -p broadwell
+
+MY MPI RESULT
+
+MESSAGE_SIZE: 32                    min: 1356.000000, max: 2007.000000, mean: 1571.115000, std: 99.103896
+MESSAGE_SIZE: 64                    min: 2422.000000, max: 4190.000000, mean: 3004.045000, std: 263.361839
+MESSAGE_SIZE: 128                    min: 4339.000000, max: 7322.000000, mean: 5291.820000, std: 626.193781
+MESSAGE_SIZE: 256                    min: 6983.000000, max: 13487.000000, mean: 8996.785000, std: 1411.173662
+MESSAGE_SIZE: 512                    min: 15742.000000, max: 25403.000000, mean: 21126.495000, std: 1883.968865
+MESSAGE_SIZE: 1024                    min: 23142.000000, max: 49201.000000, mean: 31180.305000, std: 5167.158664
+MESSAGE_SIZE: 2048                    min: 40534.000000, max: 100029.000000, mean: 63043.780000, std: 10937.173477
+
+
+MPI RESULT
+
+MESSAGE_SIZE: 32                    min: 29.000000, max: 101.000000, mean: 40.400000, std: 10.461560
+MESSAGE_SIZE: 64                    min: 47.000000, max: 98.000000, mean: 63.055000, std: 11.201485
+MESSAGE_SIZE: 128                    min: 83.000000, max: 142.000000, mean: 97.155000, std: 11.552156
+MESSAGE_SIZE: 256                    min: 97.000000, max: 198.000000, mean: 110.550000, std: 14.926195
+MESSAGE_SIZE: 512                    min: 181.000000, max: 223.000000, mean: 192.815000, std: 7.763980
+MESSAGE_SIZE: 1024                    min: 356.000000, max: 486.000000, mean: 383.325000, std: 20.641589
+MESSAGE_SIZE: 2048                    min: 792.000000, max: 1016.000000, mean: 871.430000, std: 40.631276
+
+
+
+##############################################################################################################################
+
+salloc -N2 -n 6 -p broadwell
+
+MY MPI RESULT
+
+MESSAGE_SIZE: 32                    min: 1351.000000, max: 2714.000000, mean: 1943.276667, std: 225.218598
+MESSAGE_SIZE: 64                    min: 2892.000000, max: 5604.000000, mean: 3935.950000, std: 686.349774
+MESSAGE_SIZE: 128                    min: 5899.000000, max: 12142.000000, mean: 10111.036667, std: 912.090016
+MESSAGE_SIZE: 256                    min: 10694.000000, max: 21498.000000, mean: 17102.320000, std: 1370.316968
+MESSAGE_SIZE: 512                    min: 16523.000000, max: 36663.000000, mean: 28693.246667, std: 4059.835959
+MESSAGE_SIZE: 1024                    min: 21915.000000, max: 64456.000000, mean: 46348.410000, std: 6942.218768
+MESSAGE_SIZE: 2048                    min: 41182.000000, max: 148090.000000, mean: 87258.370000, std: 14514.346070
+
+MPI RESULT
+
+MESSAGE_SIZE: 32                    min: 30.000000, max: 72.000000, mean: 39.910000, std: 8.868514
+MESSAGE_SIZE: 64                    min: 50.000000, max: 116.000000, mean: 60.670000, std: 11.511279
+MESSAGE_SIZE: 128                    min: 90.000000, max: 142.000000, mean: 102.910000, std: 9.390734
+MESSAGE_SIZE: 256                    min: 105.000000, max: 222.000000, mean: 142.456667, std: 17.254758
+MESSAGE_SIZE: 512                    min: 218.000000, max: 456.000000, mean: 275.773333, std: 34.343490
+MESSAGE_SIZE: 1024                    min: 419.000000, max: 917.000000, mean: 538.126667, std: 67.010462
+MESSAGE_SIZE: 2048                    min: 800.000000, max: 1865.000000, mean: 1111.920000, std: 208.368862
+
+
+##############################################################################################################################
+
+salloc -N2 -n 8 -p broadwell
+
+MY MPI RESULT
+
+MESSAGE_SIZE: 32 INTER NODE         min: 269.000000, max: 1613.000000, mean: 867.215000, std: 44.892248
+MESSAGE_SIZE: 32 INTRA NODE         min: 276.000000, max: 1622.000000, mean: 889.730000, std: 55.428013
+
+MESSAGE_SIZE: 64 INTER NODE         min: 293.000000, max: 2518.000000, mean: 1276.110000, std: 69.277422
+MESSAGE_SIZE: 64 INTRA NODE         min: 279.000000, max: 2430.000000, mean: 1272.285000, std: 67.003339
+
+MESSAGE_SIZE: 128 INTER NODE         min: 330.000000, max: 4967.000000, mean: 2440.945000, std: 109.450938
+MESSAGE_SIZE: 128 INTRA NODE         min: 324.000000, max: 4973.000000, mean: 2445.160000, std: 106.202706
+
+MESSAGE_SIZE: 256 INTER NODE         min: 372.000000, max: 7966.000000, mean: 3693.700000, std: 229.568434
+MESSAGE_SIZE: 256 INTRA NODE         min: 355.000000, max: 7926.000000, mean: 3700.985000, std: 228.963040
+
+
+MPI RESULT
+
+MESSAGE_SIZE: 32 INTER NODE         min: 26.000000, max: 60.000000, mean: 32.305000, std: 5.902114
+MESSAGE_SIZE: 32 INTRA NODE         min: 11.000000, max: 83.000000, mean: 17.550000, std: 13.605012
+
+MESSAGE_SIZE: 64 INTER NODE         min: 39.000000, max: 72.000000, mean: 49.410000, std: 4.950373
+MESSAGE_SIZE: 64 INTRA NODE         min: 18.000000, max: 39.000000, mean: 20.020000, std: 4.185348
+
+MESSAGE_SIZE: 128 INTER NODE         min: 73.000000, max: 107.000000, mean: 77.375000, std: 3.596128
+MESSAGE_SIZE: 128 INTRA NODE         min: 31.000000, max: 62.000000, mean: 33.195000, std: 4.993211
+
+MESSAGE_SIZE: 256 INTER NODE         min: 105.000000, max: 235.000000, mean: 163.835000, std: 12.058571
+MESSAGE_SIZE: 256 INTRA NODE         min: 144.000000, max: 209.000000, mean: 162.410000, std: 6.321275
+
+MESSAGE_SIZE: 512 INTER NODE         min: 187.000000, max: 511.000000, mean: 327.770000, std: 34.402200
+MESSAGE_SIZE: 512 INTRA NODE         min: 292.000000, max: 438.000000, mean: 326.930000, std: 18.733530
+
+MESSAGE_SIZE: 1024 INTER NODE         min: 418.000000, max: 992.000000, mean: 703.445000, std: 116.057215
+MESSAGE_SIZE: 1024 INTRA NODE         min: 624.000000, max: 875.000000, mean: 689.435000, std: 63.220596
+
+MESSAGE_SIZE: 2048 INTER NODE         min: 1153.000000, max: 2070.000000, mean: 1847.020000, std: 271.479490
+MESSAGE_SIZE: 2048 INTRA NODE         min: 1476.000000, max: 2149.000000, mean: 1645.245000, std: 75.017842

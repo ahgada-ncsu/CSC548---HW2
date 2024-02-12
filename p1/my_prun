@@ -1,0 +1,39 @@
+# ahgada Amay Haresh Gada 
+
+#!/bin/bash
+
+#Usage: ./simple_my_prun [CMD]
+
+[ $# -ne 1 ] && { echo "Usage: $0 [cmd]"; exit 1; }
+
+# Set some variables
+CMD=$1
+PWD=$(pwd)
+
+# Parse $SLURM_NODELIST into an iterable list of node names
+NODES=`echo $SLURM_NODELIST | tr -d c | tr -d [ | tr -d ] | perl -pe 's/(\d+)-(\d+)/join(",",$1..$2)/eg' | awk 'BEGIN { RS=","} { print "c"$1 }'`
+
+NODES_ZERO=`echo $SLURM_NODELIST | tr -d c | tr -d [ | tr -d ] | perl -pe 's/(\d+)-(\d+)/join(",",$1..$2)/eg' | awk -F',' '{print "c" $1}'`
+
+# For each item in the nodefile, connect via ssh and run the cmd.
+# The -n parameter is important or ssh will consume the rest 
+# of the loop list in stdin.
+# Increment rank passed to the code for each node
+
+rank=0
+ranks_per_node=$(expr $SLURM_NTASKS / $SLURM_NNODES)
+for curNode in $NODES; do
+    for (( i=0; i<$ranks_per_node; i++ )); do
+	ssh -n $curNode "export MYMPI_NODEZERO=$NODES_ZERO;export MYMPI_NODENAME=\`hostname\`; export MYMPI_RANK=$rank; export MYMPI_NTASKS=$SLURM_NTASKS;export MYMPI_NNODES=$SLURM_NNODES; cd $PWD; $CMD" & pid[$rank]=$!
+	(( rank++ ))
+    done
+done
+
+#wait for each ssh / corresponding CMD to finish executing before exiting
+rank=0
+for curNode in $NODES; do
+    for (( i=0; i<$ranks_per_node; i++ )); do
+	wait ${pid[$rank]}
+	(( rank++ ))
+    done
+done

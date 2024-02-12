@@ -1,0 +1,20 @@
+// ahgada Amay Haresh Gada 
+
+
+COMPILATION
+- make -f p2.Makefile
+
+RUNNING THE CODE
+- ./p2 <NGRIDS>
+  (this will generate a fn-<NGRIDS>.dat file)
+
+CREATING THE FIGURE
+- gnuplot -e "filename='fn-<NGRIDS>'" p2.gnu
+
+
+IMPLEMENTATION EXPLANATION
+- I implemented this such that each thread on the GPU will cater to one single grid point.
+- Area is calculated at every grid pint parallelly accross the threads on the GPU.
+- Since there is a dependency on (i-1) for getting the integral, syncing of threads is required.
+- However, it is not possible to sync threads accross all blocks in my implementation. Hence, I aggregate the areas serially on the host.
+- To parallelelize this, I would require to implement something similar to Parallel Prefix Sum (Scan) with CUDA. (https://developer.nvidia.com/gpugems/gpugems3/part-vi-gpu-computing/chapter-39-parallel-prefix-sum-scan-cuda)
