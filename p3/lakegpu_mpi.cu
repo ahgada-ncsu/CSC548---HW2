@@ -81,16 +81,17 @@ void update_edge_values(double *arr, int npoints, int n_dec, int rank, int size)
 
 
 __global__ void evolve_gpu(double *un, double *uc, double *uo, double *pebbles, int n, double h, double dt, double t, int n_dec, int rank)
-{
+{ 
+    // getting i and j from gpu thread
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int j = blockIdx.y * blockDim.y + threadIdx.y;
     int ii,jj,oidx;
 
+    // restricting invalid indices
     if (i >= n || j >= n_dec)
       return;
 
-    // printf("I: %d J: %d\n", i, j);
-
+    // same as in cpu evolve
     int idx = i + j*n + 2*n;
     oidx = rank*n*n_dec + j*n + i;  //original index in matrix
     jj = oidx % n;
@@ -110,19 +111,15 @@ __global__ void evolve_gpu(double *un, double *uc, double *uo, double *pebbles, 
     }
 }
 
+// code for running on gpu
 void run_gpu(double *u, double *u0, double *u1, double *pebbles, int n, double h, double end_time, int nthreads, int n_dec, int rank, int size){
 	cudaEvent_t kstart, kstop;
 	float ktime;
 
-  int narea = (n_dec * (n)) + (4*n);
-        
-	/* HW2: Define your local variables here */
-  // int nblocks = (n/nthreads);
+  int narea = (n_dec * (n)) + (4*n);  // get area for malloc later
 
-  int block1 = (n/nthreads) + (n%nthreads==0?0:1);
-  int block2 = (n/n_dec) + (n%n_dec==0?0:1);
-
-  // printf("BLCOKS : %d, %d", block1, block2);
+  int block1 = (n/nthreads) + (n%nthreads==0?0:1); // size of 1 block
+  int block2 = (n/n_dec) + (n%n_dec==0?0:1);       // size of the second block
 
   double *un, *uc, *uo, *d_pebbles, *uc_h, *uo_h;
 
@@ -131,6 +128,7 @@ void run_gpu(double *u, double *u0, double *u1, double *pebbles, int n, double h
   memcpy(uo_h, u0, sizeof(double) * narea);
   memcpy(uc_h, u1, sizeof(double) * narea);
 
+  // allocating on device
   cudaMalloc((void **)&un, sizeof(double) * narea);
   cudaMalloc((void **)&uc, sizeof(double) * narea);
   cudaMalloc((void **)&uo, sizeof(double) * narea);
@@ -148,6 +146,7 @@ void run_gpu(double *u, double *u0, double *u1, double *pebbles, int n, double h
 	/* Start GPU computation timer */
 	CUDA_CALL(cudaEventRecord(kstart, 0));
 
+  // copying to device
   cudaMemcpy(d_pebbles, pebbles, sizeof(double) * narea, cudaMemcpyHostToDevice);
 
 	/* HW2: Add main lake simulation loop here */
@@ -155,25 +154,32 @@ void run_gpu(double *u, double *u0, double *u1, double *pebbles, int n, double h
   double dt = h / 2.;
   while (1)
   {   
+      // updating edge values
       update_edge_values(uc_h, n, n_dec, rank, size);
       update_edge_values(uo_h, n, n_dec, rank, size);
 
+      // copying updated data to device
       cudaMemcpy(uo, uo_h, sizeof(double) * narea, cudaMemcpyHostToDevice);
       cudaMemcpy(uc, uc_h, sizeof(double) * narea, cudaMemcpyHostToDevice);
 
+      // evolving on device
       evolve_gpu<<<blocks, threadsPerBlock>>>(un, uc, uo, d_pebbles, n, h, dt, t, n_dec, rank);
 
+      // some internal on device copying
       cudaMemcpy(uo, uc, sizeof(double) * narea, cudaMemcpyDeviceToDevice);
       cudaMemcpy(uc, un, sizeof(double) * narea, cudaMemcpyDeviceToDevice);
 
+      // copyin heatmap back on host for updation
       cudaMemcpy(uo_h, uo, sizeof(double) * narea, cudaMemcpyDeviceToHost);
       cudaMemcpy(uc_h, uc, sizeof(double) * narea, cudaMemcpyDeviceToHost);
 
-//      printf("Here in this loop for gpu \n");
+
       if (!tpdt(&t, dt, end_time))
           break;
   }
         /* Stop GPU computation timer */
+  
+  // copying back from host to device
   cudaMemcpy(u, un, sizeof(double) * narea, cudaMemcpyDeviceToHost);
 
 	CUDA_CALL(cudaEventRecord(kstop, 0));

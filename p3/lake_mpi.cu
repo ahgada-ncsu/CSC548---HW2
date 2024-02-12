@@ -91,16 +91,15 @@ int main(int argc, char *argv[])
     sprintf(file_name, "lake_i_%d.dat", rank);
     print_heatmap(file_name, u_i0, npoints, h, n_dec, rank, size);
 
-
+    // running for cpu
     gettimeofday(&cpu_start, NULL);
     run_cpu(u_cpu, u_i0, u_i1, pebs, npoints, h, end_time, n_dec, rank, size);
     gettimeofday(&cpu_end, NULL);
-
     elapsed_cpu = ((cpu_end.tv_sec + cpu_end.tv_usec * 1e-6)-(
                     cpu_start.tv_sec + cpu_start.tv_usec * 1e-6));
     printf("CPU took %f seconds\n", elapsed_cpu);
 
-    // GPU CODE COMMENTED FOR NOW
+    // running for GPU
     gettimeofday(&gpu_start, NULL);
     run_gpu(u_gpu, u_i0, u_i1, pebs, npoints, h, end_time, nthreads, n_dec, rank, size);
     gettimeofday(&gpu_end, NULL);
@@ -108,15 +107,11 @@ int main(int argc, char *argv[])
                     gpu_start.tv_sec + gpu_start.tv_usec * 1e-6));
     printf("GPU took %f seconds\n", elapsed_gpu);
 
-
-    // print_heatmap("lake_f.dat", u_gpu, npoints, h);
-
+    // writing the heatmap per rank
     sprintf(file_name, "lake_f_%d.dat", rank);
     print_heatmap(file_name, u_cpu, npoints, h, n_dec, rank, size);
 
-    // print_heatmap("cpu_lake_f.dat", u_cpu, npoints, h);
-    // print_heatmap("gpu_lake_f.dat", u_gpu, npoints, h);
-
+    // free memory
     free(u_i0);
     free(u_i1);
     free(pebs);
@@ -128,6 +123,7 @@ int main(int argc, char *argv[])
     return 0;  // changed to 0, because MPI threw error otherwise
 }
 
+// This sole function is responsible for communication between nodes that updates the heatmap in each rank. This function gets top 2*n and bottom 2*n values from the bottom and top rank of the process.
 void update_edge_values(double *arr, int npoints, int n_dec, int rank, int size){
   if(rank%2 == 0){
     //send to next and prev
@@ -136,7 +132,6 @@ void update_edge_values(double *arr, int npoints, int n_dec, int rank, int size)
 
     if(rank-1 >= 0)    MPI_Recv(arr, 2*npoints, MPI_DOUBLE, rank-1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     if(rank+1 < size) MPI_Recv(&arr[(2*npoints) + (npoints*n_dec)], 2*npoints, MPI_DOUBLE, rank+1, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    
   }else{
     // recv from next and prev
     if(rank-1 >= 0)    MPI_Recv(arr, 2*npoints, MPI_DOUBLE, rank-1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
@@ -146,6 +141,7 @@ void update_edge_values(double *arr, int npoints, int n_dec, int rank, int size)
     if(rank-1 >= 0)    MPI_Send(&arr[2*npoints], 2*npoints, MPI_DOUBLE, rank-1, 1, MPI_COMM_WORLD);
   }
 }
+
 
 void run_cpu(double *u, double *u0, double *u1, double *pebbles, int n, double h, double end_time, int n_dec, int rank, int size)
 {
@@ -166,9 +162,9 @@ void run_cpu(double *u, double *u0, double *u1, double *pebbles, int n, double h
 
   while(1)
   {
-    update_edge_values(uo, n, n_dec, rank, size);
-    update_edge_values(uc, n, n_dec, rank, size);
-    evolve9pt(un, uc, uo, pebbles, n, h, dt, t, n_dec, rank);
+    update_edge_values(uo, n, n_dec, rank, size);                   // updating the heatmap here
+    update_edge_values(uc, n, n_dec, rank, size);                   // updating the heatmap here
+    evolve9pt(un, uc, uo, pebbles, n, h, dt, t, n_dec, rank);       // evolving
 
     memcpy(uo, uc, sizeof(double) * narea);
     memcpy(uc, un, sizeof(double) * narea);
@@ -178,6 +174,7 @@ void run_cpu(double *u, double *u0, double *u1, double *pebbles, int n, double h
   memcpy(u, un, sizeof(double) * narea);	
 }
 
+// initializes pebbles at rank 0. No MPI modification
 void init_pebbles(double *p, int pn, int n)
 {
   int i, j, k, idx;
@@ -192,15 +189,10 @@ void init_pebbles(double *p, int pn, int n)
     j = rand() % (n - 4) + 2;
     sz = rand() % MAX_PSZ;
     idx = j + i * n;
-    // printf("PIND: %d\n", idx);
     p[idx] = (double) sz;
   }
 }
 
-// double f(double p, double t)
-// {
-//  return -expf(-TSCALE * t) * p;
-// }
 
 int tpdt(double *t, double dt, double tf)
 {
@@ -209,6 +201,7 @@ int tpdt(double *t, double dt, double tf)
   return 1;
 }
 
+// added certain calculations to parallelly initialize the heatmap with pebbles.
 void init(double *u, double *pebbles, int n, int n_dec, int rank)
 {
   int i, j, idx, uidx;
@@ -217,13 +210,12 @@ void init(double *u, double *pebbles, int n, int n_dec, int rank)
     for(j = 0; j < n ; j++){
       idx = rank*n*n_dec + i*n + j;
       uidx = idx%(n*n_dec);
-      // if(f(pebbles[idx], 0.0) < -0.5) printf("[Rank: %d] IDX: %d i: %d  j: %d UIDX: %d\n",rank,  idx, i, j, uidx);
       u[2*n + uidx] = f(pebbles[idx], 0.0);
-      // pebbles[idx] = 0.0;
     }
   }
 }
 
+// evolving
 void evolve(double *un, double *uc, double *uo, double *pebbles, int n, double h, double dt, double t)
 {
   int i, j, idx;
@@ -247,6 +239,7 @@ void evolve(double *un, double *uc, double *uo, double *pebbles, int n, double h
   }
 }
 
+// evolving with 9 points
 void evolve9pt(double *un, double *uc, double *uo, double *pebbles, int n, double h, double dt, double t, int n_dec, int rank)
 {
   int i, j, idx, ii, jj, oidx;
@@ -276,6 +269,7 @@ void evolve9pt(double *un, double *uc, double *uo, double *pebbles, int n, doubl
   }
 }
 
+// printing heatmap -> modified this as well
 void print_heatmap(const char *filename, double *u, int n, double h, int n_dec, int rank, int size)
 {
   int i, j, idx, k;

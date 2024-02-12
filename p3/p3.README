@@ -1,3 +1,52 @@
 //Group info:
 //mshaikh2 Mushtaq Ahmed Shaikh
 //ahgada Amay Gada
+
+============================================================
+CUDA WITHOUT MPI
+
+COMPILATION and RUNNING
+
+- salloc -N 1 -n 1
+- make lake -f p3.Makefile
+- ./lake 128 4 1.0 8
+
+=============================================================
+CUDA + MPI
+
+COMPILATION and RUNNING
+- salloc -N 1 -n 4
+- make lake_mpi -f p3.Makefile
+- prun ./lake_mpi 128 4 1.0 8
+- chmod +x create_full_dat.sh 
+- ./create_full_dat.sh
+- gnuplot heatmap.gnu 
+
+============================================================
+
+QUESTION: Integrating CUDA and MPI involves more sophisticated code. What problems did you encounter? How did you address them?
+ANSWER
+- The way we implmented the CUDA+MPI code was by dividing the grid into rows.
+- The first problem we encountered was, how to distribute the initial pebbles. We did that by letting rank 0 do the comupation and let it broadcast it to all other ranks.
+- Then we had to recreate the initial heatmaps ui0 and ui1 parallelly in parts. We had to map out calculations for the same. We also had to modify the functions for init, runcpu, evolve and print_heatmap.
+- We also had to allocate extra space for the data coming from different nodes. This was not challenging, but we had to adjust indices accordingly.
+
+QUESTION: How well does your algorithm scale on the GPU? Do you find cases (grid size, thread number, etc.) where the GPU implementation does not scale well? Why?
+ANSWER
+- The algorithm scales pretty well on the GPU.
+- However, there exist cases where it doesn't scale well.
+- For the part without MPI, time taken for lower grid sizes was comparable with GPUs, however, GPU performed way better for larger grid sizes.
+- For the part with MPI, the communication cost at every step of the evolve takes a toll for smaller grid sizes. However, the trend is as seen above after grid size > 200.
+
+QUESTION: Reason about the differences between the cudaEventXXX() and the gettimeofday() APIs. What is each measuring? Which one should we consider for what? What's a fair comparison?
+ANSWER
+- cudaEventXXX() measures specific GPU operations, while gettimeofday() measures overall system time.
+- cudaEventXXX() is ideal for optimizing GPU code, while gettimeofday() is better for application-level profiling.
+- cudaEventXXX() provides fine-grained timing within the GPU, while gettimeofday() offers system-wide wall-clock time.
+- For a fair comparison consider GPU profiling tools like NVIDIA Nsight Compute instead of directly comparing with gettimeofday().
+
+QUESTION: Compare your CPU and GPU runtimes for different grid sizes. When is the GPU better, and when is it worse?
+ANSWER
+- As discussed above, the GPU is worse for smaller grid sizes. It scales much better for larger grid sizes and takes much lesser time.
+- For MPI+CUDA, the GPU was seen to be not so performant with smaller grid sizes, where the MPI communication took a toll over the GPU performance.
+- However, as the grid size is increased, the time taken by GPU decreases drastically when compared to CPU.
