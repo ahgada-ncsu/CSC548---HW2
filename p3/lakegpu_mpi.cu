@@ -119,7 +119,9 @@ void run_gpu(double *u, double *u0, double *u1, double *pebbles, int n, double h
   int narea = (n_dec * (n)) + (4*n);  // get area for malloc later
 
   int block1 = (n/nthreads) + (n%nthreads==0?0:1); // size of 1 block
-  int block2 = (n/n_dec) + (n%n_dec==0?0:1);       // size of the second block
+  int block2 = (n_dec/nthreads) + (n_dec%nthreads==0?0:1);       // size of the second block
+
+  printf("BLOCKS: %d, %d\n", block1, block2);
 
   double *un, *uc, *uo, *d_pebbles, *uc_h, *uo_h;
 

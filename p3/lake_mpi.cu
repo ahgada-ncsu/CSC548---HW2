@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
 
     // writing the heatmap per rank
     sprintf(file_name, "lake_f_%d.dat", rank);
-    print_heatmap(file_name, u_cpu, npoints, h, n_dec, rank, size);
+    print_heatmap(file_name, u_gpu, npoints, h, n_dec, rank, size);
 
     // free memory
     free(u_i0);

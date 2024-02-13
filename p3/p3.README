@@ -16,7 +16,7 @@ CUDA + MPI
 
 COMPILATION and RUNNING
 - salloc -N 1 -n 4
-- make lake_mpi -f p3.Makefile
+- make lake-mpi -f p3.Makefile
 - prun ./lake_mpi 128 4 1.0 8
 - chmod +x create_full_dat.sh 
 - ./create_full_dat.sh
