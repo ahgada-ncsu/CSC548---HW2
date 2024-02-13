@@ -34,7 +34,7 @@ void update_edge_values(double *arr, int npoints, int n_dec, int rank, int size)
 void run_cpu(double *u, double *u0, double *u1, double *pebbles, int n, double h, double end_time, int n_dec, int rank, int size);
 
 extern void run_gpu(double *u, double *u0, double *u1, double *pebbles, int n, double h, double end_time, int nthreads, int n_dec, int rank, int size);
-void evolve9pt(double *un, double *uc, double *uo, double *pebbles, int n, double h, double dt, double t, int n_dec, int rank);
+void evolve9pt(double *un, double *uc, double *uo, double *pebbles, int n, double h, double dt, double t, int n_dec, int rank, int size);
 
 int main(int argc, char *argv[])
 {
@@ -164,7 +164,7 @@ void run_cpu(double *u, double *u0, double *u1, double *pebbles, int n, double h
   {
     update_edge_values(uo, n, n_dec, rank, size);                   // updating the heatmap here
     update_edge_values(uc, n, n_dec, rank, size);                   // updating the heatmap here
-    evolve9pt(un, uc, uo, pebbles, n, h, dt, t, n_dec, rank);       // evolving
+    evolve9pt(un, uc, uo, pebbles, n, h, dt, t, n_dec, rank, size);       // evolving
 
     memcpy(uo, uc, sizeof(double) * narea);
     memcpy(uc, un, sizeof(double) * narea);
@@ -240,16 +240,17 @@ void evolve(double *un, double *uc, double *uo, double *pebbles, int n, double h
 }
 
 // evolving with 9 points
-void evolve9pt(double *un, double *uc, double *uo, double *pebbles, int n, double h, double dt, double t, int n_dec, int rank)
+void evolve9pt(double *un, double *uc, double *uo, double *pebbles, int n, double h, double dt, double t, int n_dec, int rank, int size)
 {
   int i, j, idx, ii, jj, oidx;
+  int k = n/size;
 
   for( i = 0; i < n_dec; i++)
   {
     for( j = 0; j < n; j++)
     {
       idx = j + i*n + 2*n;
-      oidx = rank*n*n_dec + i*n + j;  //original index in matrix
+      oidx = rank*n*k + i*n + j;  //original index in matrix
       jj = oidx % n;
       ii = oidx / n;
 

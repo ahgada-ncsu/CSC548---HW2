@@ -24,6 +24,8 @@ COMPILATION and RUNNING
 
 ============================================================
 
+NOTE: images lake5pt.png and lake9pt.png have been created using the 128 grids for 4 pebbles over 8 threads (1 second).
+
 QUESTION: Integrating CUDA and MPI involves more sophisticated code. What problems did you encounter? How did you address them?
 ANSWER
 - The way we implmented the CUDA+MPI code was by dividing the grid into rows.

@@ -80,12 +80,15 @@ int tpdt(double *t, double dt, double tf);
 void update_edge_values(double *arr, int npoints, int n_dec, int rank, int size);
 
 
-__global__ void evolve_gpu(double *un, double *uc, double *uo, double *pebbles, int n, double h, double dt, double t, int n_dec, int rank)
+__global__ void evolve_gpu(double *un, double *uc, double *uo, double *pebbles, int n, double h, double dt, double t, int n_dec, int rank, int size)
 { 
     // getting i and j from gpu thread
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int j = blockIdx.y * blockDim.y + threadIdx.y;
     int ii,jj,oidx;
+    int k = n/size;
+
+    // printf("blockDim: %d, %d\n", blockIdx.x, blockIdx.y);
 
     // restricting invalid indices
     if (i >= n || j >= n_dec)
@@ -93,7 +96,8 @@ __global__ void evolve_gpu(double *un, double *uc, double *uo, double *pebbles, 
 
     // same as in cpu evolve
     int idx = i + j*n + 2*n;
-    oidx = rank*n*n_dec + j*n + i;  //original index in matrix
+    oidx = rank*n*k + j*n + i;  //original index in matrix
+    // printf("OIDX: %d\n", oidx);
     jj = oidx % n;
     ii = oidx / n;
 
@@ -121,7 +125,7 @@ void run_gpu(double *u, double *u0, double *u1, double *pebbles, int n, double h
   int block1 = (n/nthreads) + (n%nthreads==0?0:1); // size of 1 block
   int block2 = (n_dec/nthreads) + (n_dec%nthreads==0?0:1);       // size of the second block
 
-  printf("BLOCKS: %d, %d\n", block1, block2);
+  // printf("BLOCKS: %d, %d\n", block1, block2);
 
   double *un, *uc, *uo, *d_pebbles, *uc_h, *uo_h;
 
@@ -165,7 +169,7 @@ void run_gpu(double *u, double *u0, double *u1, double *pebbles, int n, double h
       cudaMemcpy(uc, uc_h, sizeof(double) * narea, cudaMemcpyHostToDevice);
 
       // evolving on device
-      evolve_gpu<<<blocks, threadsPerBlock>>>(un, uc, uo, d_pebbles, n, h, dt, t, n_dec, rank);
+      evolve_gpu<<<blocks, threadsPerBlock>>>(un, uc, uo, d_pebbles, n, h, dt, t, n_dec, rank, size);
 
       // some internal on device copying
       cudaMemcpy(uo, uc, sizeof(double) * narea, cudaMemcpyDeviceToDevice);
