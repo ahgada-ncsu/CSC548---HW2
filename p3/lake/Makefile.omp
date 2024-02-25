@@ -1,0 +1,9 @@
+SHELL:=/bin/bash
+
+all:
+	module unload openmpi4; module load nvhpc; \
+	pgcc -o lake lake.c -I./ -mp -fast -Minfo=mp -Minline -Msafeptr -lm; \
+	module unload nvhpc; module load openmpi4
+
+clean:
+	rm -f *.o *~ *.dat *.png lake.log lake

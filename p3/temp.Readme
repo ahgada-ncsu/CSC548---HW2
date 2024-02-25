@@ -1,0 +1,64 @@
+SERIAL
+    running ./lake with (256 x 256) grid, until 8.000000, with 1 threads
+    Initialization took 0.000380 seconds
+    Simulation took 4.891935 seconds
+    Init+Simulation took 4.892315 seconds
+
+OpenACC (Naive)
+    running ./lake with (256 x 256) grid, until 8.000000, with 1 threads
+    Initialization took 0.000600 seconds
+    Simulation took 4.931608 seconds
+    Init+Simulation took 4.932208 seconds
+
+OpenACC (With better data management) [2]
+    running ./lake with (256 x 256) grid, until 8.000000, with 1 threads
+    Initialization took 0.000384 seconds
+    Simulation took 1.367263 seconds
+    Init+Simulation took 1.367647 seconds
+
+OpenACC (With [2] + parallel initialization) [3]
+    running ./lake with (256 x 256) grid, until 8.000000, with 1 threads
+    Initialization took 1.178097 seconds
+    Simulation took 0.198623 seconds
+    Init+Simulation took 1.376720 seconds
+
+OpenACC (with [3] + parallel memory copy in run_sim)
+    running ./lake with (256 x 256) grid, until 8.000000, with 1 threads
+    Initialization took 1.168171 seconds
+    Simulation took 0.202251 seconds
+    Init+Simulation took 1.370422 seconds
+
+OpenACC (with [2] + parallel memory copy)
+    running ./lake with (256 x 256) grid, until 8.000000, with 1 threads
+    Initialization took 0.000398 seconds
+    Simulation took 1.381993 seconds
+    Init+Simulation took 1.382391 seconds
+
+
+=======
+
+running ./lake with (300 x 300) grid, until 1.000000, with 1 threads
+Initialization took 0.000647 seconds
+Simulation took 1.038377 seconds
+Init+Simulation took 1.039024 seconds
+
+running ./lake with (300 x 300) grid, until 1.000000, with 1 threads
+Initialization took 1.170490 seconds
+Simulation took 0.046238 seconds
+Init+Simulation took 1.216728 seconds
+
+
+running ./lake with (300 x 300) grid, until 8.000000, with 1 threads
+Initialization took 0.000519 seconds
+Simulation took 8.334079 seconds
+Init+Simulation took 8.334598 seconds
+
+running ./lake with (300 x 300) grid, until 8.000000, with 1 threads
+Initialization took 0.000548 seconds
+Simulation took 1.471048 seconds
+Init+Simulation took 1.471596 seconds
+
+running ./lake with (300 x 300) grid, until 8.000000, with 1 threads
+Initialization took 1.188237 seconds
+Simulation took 0.314643 seconds
+Init+Simulation took 1.502880 seconds

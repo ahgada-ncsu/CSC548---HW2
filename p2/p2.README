@@ -1,0 +1,140 @@
+COMPILATION AND RUNNING
+
+salloc -n 16 -p broadwell
+make -f Makefile.omp
+./lake 1024 4 2.0 16
+gnuplot plot_lake_gnu
+
+######################################################################################################################
+
+NOTE
+- The code is written such that memory optimization will be used if Makefile for ACC or OpenMP is used.
+- For the serial makefile, it will use memcopy
+
+######################################################################################################################
+
+LOGS FROM EXPERIMENTS IN P2
+
+Time taken to run the program with the extended stencil (V0):  
+    running ./lake with (1024 x 1024) grid, until 2.000000, with 1 threads
+    Initialization took 0.008196 seconds
+    Simulation took 92.492357 seconds
+    Init+Simulation took 92.500553 seconds
+
+Time taken to run serial program with optimization
+    running ./lake with (1024 x 1024) grid, until 2.000000, with 1 threads
+    Initialization took 0.008191 seconds
+    Simulation took 86.523624 seconds
+    Init+Simulation took 86.531815 seconds
+
+Time taken when only the inner loop of evolve was parallelized
+    running ./lake with (1024 x 1024) grid, until 2.000000, with 16 threads
+    Initialization took 0.008142 seconds
+    Simulation took 25.582848 seconds
+    Init+Simulation took 25.590990 seconds
+
+Time taken when only the outer loop of evolve was parallelized
+    running ./lake with (1024 x 1024) grid, until 2.000000, with 16 threads
+    Initialization took 0.008368 seconds
+    Simulation took 7.145967 seconds
+    Init+Simulation took 7.154335 seconds
+
+Time taken for parallelizing both loops
+    running ./lake with (1024 x 1024) grid, until 2.000000, with 16 threads
+    Initialization took 0.007406 seconds
+    Simulation took 6.023915 seconds
+    Init+Simulation took 6.031321 seconds
+
+Time taken for parallelizing both loops + INIT 
+    running ./lake with (1024 x 1024) grid, until 2.000000, with 16 threads
+    Initialization took 0.007769 seconds
+    Simulation took 5.997473 seconds
+    Init+Simulation took 6.005242 seconds
+
+Time taken for Init + bot loops + memcopy parallelization
+    running ./lake with (1024 x 1024) grid, until 2.000000, with 16 threads
+    Initialization took 0.007552 seconds
+    Simulation took 6.029437 seconds
+    Init+Simulation took 6.036989 seconds
+
+Time taken for dynamic scheduling with chunk = 5
+    running ./lake with (1024 x 1024) grid, until 2.000000, with 16 threads
+    Initialization took 0.053112 seconds
+    Simulation took 64.614275 seconds
+    Init+Simulation took 64.667387 seconds
+
+Time taken for dynamic scheduling with chunk = 5000
+    running ./lake with (1024 x 1024) grid, until 2.000000, with 16 threads
+    Initialization took 0.007926 seconds
+    Simulation took 7.567212 seconds
+    Init+Simulation took 7.575138 seconds
+
+Time taken for dynamic scheduling with chunk = 20000
+    running ./lake with (1024 x 1024) grid, until 2.000000, with 16 threads
+    Initialization took 0.007989 seconds
+    Simulation took 8.713155 seconds
+    Init+Simulation took 8.721144 seconds
+
+Time taken for dynamic scheduling with chunk = 80000
+    running ./lake with (1024 x 1024) grid, until 2.000000, with 16 threads
+    Initialization took 0.006657 seconds
+    Simulation took 9.010738 seconds
+    Init+Simulation took 9.017395 seconds
+
+Time taken for dynamic scheduling with chunk = 200000
+    running ./lake with (1024 x 1024) grid, until 2.000000, with 16 threads
+    Initialization took 0.007328 seconds
+    Simulation took 21.933604 seconds
+    Init+Simulation took 21.940932 seconds
+
+Time taken for dynamic scheduling with chunk = 500000
+    running ./lake with (1024 x 1024) grid, until 2.000000, with 16 threads
+    Initialization took 0.009562 seconds
+    Simulation took 54.450235 seconds
+    Init+Simulation took 54.459797 seconds
+
+######################################################################################################################
+
+How/why does your optimization for removing memory copies work?
+    - My approach was to introduce a temp pointer and cycle the pointers such that the memcopy is replicated.
+    - The memcopy did the following: 
+        memcpy(uo, uc, sizeof(double) * n * n);
+        memcpy(uc, un, sizeof(double) * n * n);
+    - uo <- uc
+    - uc <- un
+    - Hence, instead of copying all the data,, what if we just switch what uo and uc point to?
+    - This is much faster, because now we are no longer copying n^2 copies twice.
+    - Hence, we reduce the time complexity from O(n^2) to O(1)
+
+
+Does which loop you parallelized matter? Why or why not?
+    - According to my observation, parallelizing the outer loop has a much significant speedup as compared to parallelizing the inner loop.
+    - around 25 seconds when only the inner loop was parallelized
+    - around 7 seconds when only the outer loop was parallelized
+    - One of the reasons could be that there is a default barrier at the end of the for loop.
+        - If the inner loop is parallelized, all threads complete computations for each iteration of the outer loop before moving on to the next. This can be slow.
+        - On the other hand, if only the outer loop is parallelized, then the barrier is at the outer loop. Hence, all threads dont wait to move to the next iteration of the outer loop.
+
+Does parallelizing both loops make a difference? Why or why not?
+    - According to my observation, parallelizing both loops does matter.
+    - Using the time taken for parallelizing "only" the outer loop as baseline, parallelizing both loops has a tiny benefit. 
+    - This can be because each thread is now not running the inner loop parallelly but doing each computation parallely. This allows each thread to do slightly more work.
+
+
+Why does parallelizing memory initializations matter?
+    - Ahmdal's law.
+    - Memory initialization is a serial process.
+    - We want to reduce the serial part as much as we can to increase speedup.
+
+Does the scheduling type matter? Why or why not?
+    - It does matter.
+    - Dynamic scheduling in OpenMP can be slower for independent tasks compared to static scheduling in certain scenariosoes not really matter..
+    - In dynamic scheduling the chunks are assigned dynamically to threads as they become available, which can help balance the workload among threads and improve load balancing, especially when loop iterations have varying execution times or data dependencies.
+    - In cases where the tasks are independent, static scheduling does better. No overhead associated with dynammic scheduling.
+    - In the lake code, static should be better. That is what the results also support.
+
+This program is particularly easy to parallelize. Why?
+    - We parallelize loops.
+    - We just have to add a line on top of any loop to parallelize it.
+    - We don't have to change a lot of code either.
+    - Hence, it is easier to parallelize.

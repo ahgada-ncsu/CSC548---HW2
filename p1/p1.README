@@ -1,0 +1,28 @@
+COMPILATION AND RUNNING
+
+salloc -N 2 -N 32
+make clean
+mpicc -O3 -c pmpi.c
+make CXX=mpic++ LIBS=pmpi.o
+prun ./miniFE.x
+export LC_ALL="en_US.UTF-8"
+gnuplot heatmap.plot
+
+#################################################################################################
+
+Note: This was done on 32 processes over 2 nodes.
+
+#################################################################################################
+
+Describe the communication pattern. Where is most of the communication happening (number of calls)?
+    - The communication pattern is hard to describe. But certain observations are as follows.
+        - There is symmetry. The number of sends from rank i to j is the same as the number of sends from rank j to i.
+        - The largest number of sends per rank is 17.
+            - This occurs at rank 3, 7, 10, 14, 17, 21, 24, 28
+
+
+What symmetries do you expect to see for Send counts? Are these symmetries observed? Why or Why not?
+    - Since I do not know the program's purpose, I do not expect any weird symetry.
+    - I expect that rank i will not be able to send data to itself and hence will have 0 sends there.
+    - The diagonal should have 0 sends. (black in colour)
+    - This is observered.
