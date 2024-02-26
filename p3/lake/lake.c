@@ -108,6 +108,10 @@ int main(int argc, char *argv[])
 #ifdef __DEBUG
   lake_log("initializing u0, u1\n");
 #endif
+
+#ifdef _OPENACC
+  #pragma acc init
+#endif
   
   gettimeofday(&cpu_start, NULL);
   init(u_i0, pebs, npoints);
@@ -388,10 +392,6 @@ void init(double *u, double *pebbles, int n)
   // added openmp parallelization to the init loop.
   #ifdef _OPENMP
     #pragma omp parallel for collapse(2) private(i,j,idx) num_threads(nthreads)
-  #endif
-  // added openacc parallelization to the init loop.
-  #ifdef _OPENACC
-    #pragma acc parallel loop copyin(u[:n*n],pebbles[:n*n]) copyout(u[:n*n])
   #endif
   for(i = 0; i < n ; i++)
   {
