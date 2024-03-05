@@ -1,0 +1,79 @@
+//Group info:
+//mshaikh2 Mushtaq Ahmed Shaikh
+//ahgada Amay Gada
+
+I discuss the results here. More verbose timings are logged in another file called "p2_logs.README"
+The values for X and P are given in the log file. (At the beginning of each section corresponding to one configuration.)
+
+A: (4, 4, 16)
+---------------------------------------------------------------------------
+Report the % of time spent in MPI.
+- 73.93% (line 42 from the logs)
+
+Identify the most expensive MPI call and report its App% and MPI% time relative to the overall respective time. 
+- Call                 Site       Time    App%    MPI%      Count    COV
+  Send                  501       15.8    1.72    2.32         11   0.00
+  (line 48 from logs)
+
+
+===========================================================================================================================
+
+B: Same as A but without core binding 
+---------------------------------------------------------------------------
+Report the % of time spent in MPI.
+- 65.64% (line 112 from the logs)
+
+Identify the most expensive MPI call and report its App% and MPI% time relative to the overall respective time. 
+- Call                 Site       Time    App%    MPI%      Count    COV
+  Send                  105       27.6    2.08    3.17         11   0.00
+  (line 118 from logs)
+
+
+===========================================================================================================================
+
+C: (4, 1, 64)
+---------------------------------------------------------------------------
+Report the % of time spent in MPI.
+- 93.31% (line 229 from the logs)
+
+Identify the most expensive MPI call and report its App% and MPI% time relative to the overall respective time. 
+- Call                 Site       Time    App%    MPI%      Count    COV
+  Allreduce              33       8.28    0.28    0.30         32   0.00
+  (line 236 from logs)
+
+===========================================================================================================================
+
+D: Same as C but without core binding
+---------------------------------------------------------------------------
+Report the % of time spent in MPI.
+- 92.40% (line 348 from the logs)
+
+Identify the most expensive MPI call and report its App% and MPI% time relative to the overall respective time. 
+- Call                 Site       Time    App%    MPI%      Count    COV
+  Allreduce              33       10.8    0.35    0.38         32   0.00
+  (line 354 from logs)
+
+===========================================================================================================================
+
+
+What differences are there between configurations? 
+- In A and B, we divide the task over 16 processors using MPI. Over and above that, we also parallelize over 4 MPI threads. The only difference between A and B is that in B we do not bind the launched processes to specific cores.
+- In C and D, we divide the task over 64 processors using MPI. We do not perform any OpenMP parallelization here. The only difference between C and D is that in B we do not bind the launched processes to specific cores. 
+
+Observations and Discussion
+- The percentage time spent in MPI out of the total is lower in A & B, when compared with C & D. 
+    - This is because in A & B, we use openMP for additional parallelization on each node. 
+    - OpenMP can introduce other overheads which increase the time not spent doing MPI tasks.
+    - The hybrid parallel environment creates more parallel processing units than the ones used in only MPI. The tasks done by these are not accounted for in the time taken by MPI tasks.
+
+- The MPI call that took the longest was "Send" in A & B, while in C & D, it was AllGather (Send took lesser time). Number of interprocess communication calls were more in C & D, when compared to A & B.
+    - This is because communication overhead reduces in A & B since openMP reduces inter process communication.
+
+- The percentage time spent in MPI was slightly higher in cases with core bindings ("A" and "C"), than their counterparts ("B" and "D").
+    - This is because core binding allows all the tasks to be distributed to fixed cores in the processor.
+    - Processes are placed on separate cores, potentially leading to improved communication channels and reduced contention for shared resources. Hence, communication becomes faster (Can be seen in the aggregate top 20 calls table in p2_logs.README -> sends take longer for non-bound configurations).
+    - There is also improved cache locality once the processes are bound to a core.
+
+What are the limits to parallelization?
+    - Overhead in thread scheduling in case of openMP.
+    - Overhead of communication in MPI.

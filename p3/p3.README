@@ -1,0 +1,36 @@
+//Group info:
+//mshaikh2 Mushtaq Ahmed Shaikh
+//ahgada Amay Gada
+
+The logs used to create the bar plot is in another file called p3_logs.README
+
+This file is used to explain the plot.
+
+
+Explain how scaling the frequency affects time, power, and stall counts. Be sure to discuss why these results make sense.
+
+
+POWER
+- The average power is constant initially, but increases slightly as we increase the CPU frequency.
+-  P = V^2 * C * f [V = voltage, C = Capacitance, f = frequency]
+- as f increases, P increases.
+- The processor does more work per unit time. This increases the power consumption.
+- Other factors also contribute to the power consumption. I assume that the lower "stall cycles" and "cycles with no instruction" for smaller frequencies also reduces power consumption.
+
+PAPI_RES_STL
+- Cycles processor is stalled on resource
+- This value increases with increases in frequency.
+- The processor processes instructions faster with increase in frequency. Hence, the processor stalls as it waits for slower resources (memory for example).
+
+PAPI_STL_ICY
+- Cycles with No Instruction Issue
+- This value increases with an increase in processor frequency.
+- There can be multiple reasons for this.
+    - With increase in frquency, the penalty of dependency resolutions and branch mispredictions increases.
+    - CPU waiting for shared resources. (contention)
+
+Time
+- The time taken for the program to complete reduced as the processor frequency increased.
+- This is because the instructions are processed faster with increase in frequency.
+- There is a tradeoff between faster instruction processing and getting stalled on resources.
+- Since the time taken reduces with frequency increase, we can conclude that the processor frequency was the bottleneck.
